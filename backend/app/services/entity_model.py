@@ -91,19 +91,26 @@ class EntityModelService(BaseModuleService):
             if model.get("status") != "已生效":
                 continue
             model_name = model.get("模型名称", "")
+            # 只关联真实测量轮次：缺数轮次（无数据/采集异常）不提供质量率
             model_quality = [
                 q for q in quality_rows
-                if q.get("实体模型") == model_name and q.get("status") == "已完成"
+                if q.get("实体模型") == model_name
+                and q.get("status") == "已完成"
+                and q.get("measured") is True
             ]
             model_clusters = [
                 c for c in cluster_rows
                 if c.get("实体模型") == model_name
             ]
+            latest_quality = (
+                max(model_quality, key=lambda q: q.get("统计时间", ""))
+                if model_quality else None
+            )
             result.append({
                 "model_name": model_name,
                 "business_domain": model.get("业务域"),
                 "quality_records": len(model_quality),
                 "duplicate_clusters": len(model_clusters),
-                "latest_quality": model_quality[-1] if model_quality else None,
+                "latest_quality": latest_quality,
             })
         return result
